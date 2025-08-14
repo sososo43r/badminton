@@ -56,34 +56,22 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // ▼▼▼▼▼ ステップ1で取得した自分のfirebaseConfigをここに貼り付け ▼▼▼▼▼
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBwaFZUZOTn7UOovrQnX2yQWB6Kgb1cejI",
-  authDomain: "badminton-app-98840.firebaseapp.com",
-  databaseURL: "https://badminton-app-98840-default-rtdb.firebaseio.com",
-  projectId: "badminton-app-98840",
-  storageBucket: "badminton-app-98840.firebasestorage.app",
-  messagingSenderId: "237816615264",
-  appId: "1:237816615264:web:68cdafa5cc46e9edcb4e05"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
-        // Firebaseの初期化
+        // あなたのFirebase設定情報です
+        const firebaseConfig = {
+            apiKey: "AIzaSyBwaFZUZOTn7UOovrQnX2yQWB6Kgb1cejI",
+            authDomain: "badminton-app-98840.firebaseapp.com",
+            databaseURL: "https://badminton-app-98840-default-rtdb.firebaseio.com",
+            projectId: "badminton-app-98840",
+            storageBucket: "badminton-app-98840.appspot.com",
+            messagingSenderId: "237816615264",
+            appId: "1:237816615264:web:68cdafa5cc46e9edcb4e05"
+        };
+        
+        // Firebaseを初期化（古い書き方で統一）
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // これより下のJavaScriptは前回のものとほぼ同じですが、
-        // データをFirebaseに書き込む処理が追加されています。
-
+        // これより下のJavaScriptは、データをFirebaseに書き込む処理が追加されたものです
         const generateBtn = document.getElementById('generate-btn');
         const addPlayerBtn = document.getElementById('add-player-btn');
         const nameInputsContainer = document.getElementById('name-inputs');
@@ -114,7 +102,6 @@ const app = initializeApp(firebaseConfig);
             fullSchedule = generateRoundRobin(players);
             currentGameIndex = 0;
             
-            // Firebaseにデータを書き込む
             database.ref('badminton').set({
                 schedule: fullSchedule,
                 gameIndex: currentGameIndex,
@@ -132,7 +119,6 @@ const app = initializeApp(firebaseConfig);
         prevGameBtn.addEventListener('click', () => {
             if (currentGameIndex > 0) {
                 currentGameIndex--;
-                // Firebaseのゲーム番号を更新
                 database.ref('badminton/gameIndex').set(currentGameIndex);
                 updateGameView();
             }
@@ -141,7 +127,6 @@ const app = initializeApp(firebaseConfig);
         nextGameBtn.addEventListener('click', () => {
             if (currentGameIndex < fullSchedule.length - 1) {
                 currentGameIndex++;
-                // Firebaseのゲーム番号を更新
                 database.ref('badminton/gameIndex').set(currentGameIndex);
                 updateGameView();
             }

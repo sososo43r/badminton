@@ -37,28 +37,18 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // ▼▼▼▼▼ ステップ1で取得した自分のfirebaseConfigをここに貼り付け ▼▼▼▼▼
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBwaFZUZOTn7UOovrQnX2yQWB6Kgb1cejI",
-  authDomain: "badminton-app-98840.firebaseapp.com",
-  databaseURL: "https://badminton-app-98840-default-rtdb.firebaseio.com",
-  projectId: "badminton-app-98840",
-  storageBucket: "badminton-app-98840.firebasestorage.app",
-  messagingSenderId: "237816615264",
-  appId: "1:237816615264:web:68cdafa5cc46e9edcb4e05"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
-        // Firebaseの初期化
+        // あなたのFirebase設定情報です
+        const firebaseConfig = {
+            apiKey: "AIzaSyBwaFZUZOTn7UOovrQnX2yQWB6Kgb1cejI",
+            authDomain: "badminton-app-98840.firebaseapp.com",
+            databaseURL: "https://badminton-app-98840-default-rtdb.firebaseio.com",
+            projectId: "badminton-app-98840",
+            storageBucket: "badminton-app-98840.appspot.com",
+            messagingSenderId: "237816615264",
+            appId: "1:237816615264:web:68cdafa5cc46e9edcb4e05"
+        };
+        
+        // Firebaseを初期化（古い書き方で統一）
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
@@ -66,7 +56,6 @@ const app = initializeApp(firebaseConfig);
         const courtContainer = document.getElementById('court-container');
         const scheduleContainer = document.getElementById('schedule-container');
 
-        // Firebaseのデータ変更を監視
         database.ref('badminton').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && data.schedule) {
@@ -110,7 +99,6 @@ const app = initializeApp(firebaseConfig);
             data.schedule.forEach((round, roundIndex) => {
                 const playingNow = new Set(round.flat());
                 const restingPlayer = allP.find(p => !playingNow.has(p)) || 'なし';
-                // 現在のゲームの行をハイライトするためのクラスを追加
                 const isCurrentGame = roundIndex === data.gameIndex ? 'class="current-game"' : '';
                 tableHTML += `<tr ${isCurrentGame}><td>第${roundIndex + 1}ゲーム</td>`;
                 for (let i = 0; i < courtCount; i++) {

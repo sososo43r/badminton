@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>バドミントン割り当て【管理者用】</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f8ff; }
+        .container { max-width: 1000px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1, h2 { color: #0056b3; border-bottom: 2px solid #0056b3; }
+        button { color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; }
+        button:disabled { background-color: #ccc; }
+        #generate-btn { background-color: #007bff; }
+        #add-player-btn { background-color: #28a745; }
+        #game-controls { display: none; margin: 10px 0; text-align: center; }
+        #prev-game-btn, #next-game-btn { background-color: #6c757d; margin: 0 5px; }
+        .court-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 20px; padding: 20px; background-color: #fafafa; min-height: 150px; }
+        .court { background-color: #e67e22; border: 2px solid #fff; width: 150px; height: 300px; position: relative; color: white; font-weight: bold; }
+        .court-title { text-align: center; background-color: rgba(0,0,0,0.3); }
+        .player { position: absolute; width: 100%; text-align: center; }
+        .player-top { top: 20px; }
+        .player-bottom { bottom: 20px; }
+        .vs { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .net { position: absolute; top: 50%; left: 5%; right: 5%; border-top: 2px dashed #fff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ccc; padding: 12px; text-align: center; }
+        th { background-color: #007bff; color: white; }
+        td.rest-player { background-color: #e9ecef; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏸 バドミントン シングルス割り当て【管理者用】</h1>
+        <div class="setup-section">
+            <h2>① 設定</h2>
+            <div><label>コートの面数：<input type="number" id="court-count" value="3" min="1"></label></div>
+            <div>
+                <p>プレイヤー名を入力してください:</p>
+                <div id="name-inputs"></div>
+                <button id="add-player-btn">＋ プレイヤーを追加</button>
+            </div>
+            <button id="generate-btn">コート割り当てを作成・共有</button>
+        </div>
+        <div class="result-section">
+            <h2>② コート割り当て（<span id="game-number"></span> ゲーム目）</h2>
+            <div id="game-controls">
+                <button id="prev-game-btn">＜ 前のゲーム</button>
+                <button id="next-game-btn">次のゲーム ＞</button>
+            </div>
+            <div id="court-container"><p>作成ボタンで表示します</p></div>
+            <h2>③ 対戦組み合わせ表（総当たり）</h2>
+            <div id="schedule-container"></div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // ▼▼▼▼▼ ステップ1で取得した自分のfirebaseConfigをここに貼り付け ▼▼▼▼▼
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBwaFZUZOTn7UOovrQnX2yQWB6Kgb1cejI",
+  authDomain: "badminton-app-98840.firebaseapp.com",
+  databaseURL: "https://badminton-app-98840-default-rtdb.firebaseio.com",
+  projectId: "badminton-app-98840",
+  storageBucket: "badminton-app-98840.firebasestorage.app",
+  messagingSenderId: "237816615264",
+  appId: "1:237816615264:web:68cdafa5cc46e9edcb4e05"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+        // Firebaseの初期化
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // これより下のJavaScriptは前回のものとほぼ同じですが、
+        // データをFirebaseに書き込む処理が追加されています。
+
+        const generateBtn = document.getElementById('generate-btn');
+        const addPlayerBtn = document.getElementById('add-player-btn');
+        const nameInputsContainer = document.getElementById('name-inputs');
+        const courtCountInput = document.getElementById('court-count');
+        const courtContainer = document.getElementById('court-container');
+        const scheduleContainer = document.getElementById('schedule-container');
+        const gameControls = document.getElementById('game-controls');
+        const prevGameBtn = document.getElementById('prev-game-btn');
+        const nextGameBtn = document.getElementById('next-game-btn');
+        const gameNumberSpan = document.getElementById('game-number');
+
+        let fullSchedule = [];
+        let currentGameIndex = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            for (let i = 0; i < 4; i++) createPlayerInput();
+        });
+
+        addPlayerBtn.addEventListener('click', createPlayerInput);
+
+        generateBtn.addEventListener('click', () => {
+            const players = getPlayersFromInputs();
+            if (players.length < 2) {
+                alert('プレイヤーを2名以上入力してください。');
+                return;
+            }
+            const courtCount = parseInt(courtCountInput.value, 10);
+            fullSchedule = generateRoundRobin(players);
+            currentGameIndex = 0;
+            
+            // Firebaseにデータを書き込む
+            database.ref('badminton').set({
+                schedule: fullSchedule,
+                gameIndex: currentGameIndex,
+                courtCount: courtCount,
+                players: players
+            }).then(() => {
+                alert('スケジュールが作成・共有されました！');
+            });
+
+            updateGameView();
+            displayScheduleTable(fullSchedule, players);
+            gameControls.style.display = 'block';
+        });
+
+        prevGameBtn.addEventListener('click', () => {
+            if (currentGameIndex > 0) {
+                currentGameIndex--;
+                // Firebaseのゲーム番号を更新
+                database.ref('badminton/gameIndex').set(currentGameIndex);
+                updateGameView();
+            }
+        });
+
+        nextGameBtn.addEventListener('click', () => {
+            if (currentGameIndex < fullSchedule.length - 1) {
+                currentGameIndex++;
+                // Firebaseのゲーム番号を更新
+                database.ref('badminton/gameIndex').set(currentGameIndex);
+                updateGameView();
+            }
+        });
+
+        function createPlayerInput() {
+            const input = document.createElement('input');
+            input.placeholder = `プレイヤー ${nameInputsContainer.children.length + 1}`;
+            nameInputsContainer.appendChild(input);
+        }
+
+        function getPlayersFromInputs() {
+            const inputs = nameInputsContainer.getElementsByTagName('input');
+            return Array.from(inputs).map(input => input.value.trim()).filter(name => name);
+        }
+
+        function generateRoundRobin(players) {
+            let localPlayers = [...players];
+            if (localPlayers.length % 2 !== 0) {
+                const lastPlayer = localPlayers.pop();
+                localPlayers.unshift(lastPlayer);
+                localPlayers.push('休憩');
+            }
+            const playerCount = localPlayers.length;
+            const rounds = [];
+            for (let r = 0; r < playerCount - 1; r++) {
+                const roundMatches = [];
+                for (let i = 0; i < playerCount / 2; i++) {
+                    const p1 = localPlayers[i];
+                    const p2 = localPlayers[playerCount - 1 - i];
+                    if (p1 !== '休憩' && p2 !== '休憩') roundMatches.push([p1, p2]);
+                }
+                rounds.push(roundMatches);
+                localPlayers.splice(1, 0, localPlayers.pop());
+            }
+            return rounds;
+        }
+
+        function updateGameView() {
+            const courtCount = parseInt(courtCountInput.value, 10);
+            const currentMatches = fullSchedule[currentGameIndex] || [];
+            gameNumberSpan.textContent = currentGameIndex + 1;
+            courtContainer.innerHTML = '';
+            for (let i = 0; i < courtCount; i++) {
+                const courtDiv = document.createElement('div');
+                courtDiv.className = 'court';
+                let courtHTML = `<div class="court-title">第${i + 1}コート</div><div class="net"></div>`;
+                if (i < currentMatches.length) {
+                    courtHTML += `<div class="player player-top">${currentMatches[i][0]}</div><div class="vs">vs</div><div class="player player-bottom">${currentMatches[i][1]}</div>`;
+                } else {
+                    courtHTML += `<div class="vs">空き</div>`;
+                }
+                courtDiv.innerHTML = courtHTML;
+                courtContainer.appendChild(courtDiv);
+            }
+            prevGameBtn.disabled = (currentGameIndex === 0);
+            nextGameBtn.disabled = (currentGameIndex === fullSchedule.length - 1);
+        }
+        
+        function displayScheduleTable(schedule, originalPlayers) {
+            scheduleContainer.innerHTML = '';
+            const table = document.createElement('table');
+            const courtCount = parseInt(courtCountInput.value, 10);
+            let tableHTML = `<thead><tr><th>ゲーム</th>`;
+            for(let i=1; i<=courtCount; i++) tableHTML += `<th>第${i}コート</th>`;
+            tableHTML += `<th>休憩の人</th></tr></thead><tbody>`;
+            let allP = [...originalPlayers];
+            if(allP.length % 2 !== 0) allP.push("休憩");
+            schedule.forEach((round, roundIndex) => {
+                const playingNow = new Set(round.flat());
+                const restingPlayer = allP.find(p => !playingNow.has(p)) || 'なし';
+                tableHTML += `<tr><td>第${roundIndex + 1}ゲーム</td>`;
+                for (let i = 0; i < courtCount; i++) {
+                    tableHTML += `<td>${round[i] ? `${round[i][0]} vs ${round[i][1]}` : '-'}</td>`;
+                }
+                tableHTML += `<td class="rest-player">${restingPlayer}</td></tr>`;
+            });
+            table.innerHTML = tableHTML + '</tbody>';
+            scheduleContainer.appendChild(table);
+        }
+    </script>
+</body>
+</html>
